@@ -1,6 +1,7 @@
 langchain
 langchain-community
 langchain-openai
+langchain-ollama
 chromadb
 pandas
 matplotlib
@@ -9,3 +10,4 @@ python-dotenv
 streamlit
 openai
 tiktoken
+sentence-transformers
