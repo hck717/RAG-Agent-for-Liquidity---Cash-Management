@@ -119,6 +119,25 @@ with st.sidebar:
             os.system("python initialize_system.py")
             st.success("System Initialized!")
 
+    st.markdown("---")
+    st.header("💡 Try These Queries")
+    st.markdown("""
+    **1. Check Balance (SQL)**
+    > "What is the current balance in our HKD account?"
+    
+    **2. Compliance Check (RAG)**
+    > "What are the documentation requirements for inbound payments to Brazil?"
+    
+    **3. Stress Test (Simulation)**
+    > "Run a stress test: interest rate -2% and 30-day payment delay."
+    
+    **4. Plan & Execute (Complex)**
+    > "I need to send 5M USD to Brazil. Do we have enough funds and what are the rules?"
+    
+    **5. Scenario Analysis**
+    > "Simulate a 45-day sales delay. Will we go negative?"
+    """)
+
 # Chat Interface
 if "messages" not in st.session_state:
     st.session_state.messages = []
