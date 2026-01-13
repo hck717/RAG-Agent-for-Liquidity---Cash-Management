@@ -12,3 +12,5 @@ streamlit
 openai
 tiktoken
 sentence-transformers
+langchain-text-splitters
+langchain-huggingface
