@@ -2,99 +2,79 @@
 
 A conversational AI agent designed for Corporate Treasury teams to automate liquidity queries, compliance checks, and financial stress testing. This Proof of Concept (POC) demonstrates a "Plan-and-Execute" agentic architecture that combines RAG (Retrieval-Augmented Generation), SQL database querying, and Python-based simulations.
 
-![Agent UI Screenshot](https://img.shields.io/badge/Status-POC-yellow) ![Python](https://img.shields.io/badge/Python-3.10+-blue) ![LangChain](https://img.shields.io/badge/LangChain-v0.1-green)
+![Agent UI Screenshot](https://img.shields.io/badge/Status-POC-yellow) ![Python](https://img.shields.io/badge/Python-3.10+-blue) ![Docker](https://img.shields.io/badge/Docker-Enabled-blue)
 
 ## 🚀 Key Features
 
-*   **📈 Real-time Balance Checking**: Queries a local SQL database to retrieve up-to-date account balances across multiple currencies.
-*   **⚖️ Compliance & Regulatory Check (RAG)**: Retrieves foreign exchange (FX) rules and cross-border transfer limits from an internal knowledge base (PDF/Markdown) using Vector Search (ChromaDB).
-*   **⚠️ Agentic Stress Testing**:
-    *   **Simulation**: Runs Python simulations to forecast cash flow under stress scenarios (e.g., Interest Rate Drops, Payment Delays).
-    *   **Visualization**: Automatically generates and displays charts (Matplotlib) to visualize liquidity trends.
-*   **🔒 Data Privacy First**: Supports **Local LLMs (Ollama/Llama 3)** and local embeddings to ensure sensitive financial data never leaves your infrastructure.
+*   **📈 Real-time Balance Checking**: Queries a local SQL database to retrieve up-to-date account balances.
+*   **⚖️ Compliance & Regulatory Check (RAG)**: Retrieves foreign exchange (FX) rules using Vector Search (ChromaDB).
+*   **⚠️ Agentic Stress Testing**: Runs Python simulations to forecast cash flow under stress scenarios and generates charts.
+*   **🔒 Data Privacy First**: Supports **Local LLMs (Ollama/Llama 3)** via Docker integration.
 
-## 📂 Project Architecture: Agent Skills
+## 🐳 Docker Quick Start (Recommended)
 
-This project follows a modular **Agentic Skills** architecture. Each capability is encapsulated in the `skills/` directory with its own documentation and logic.
+Run the entire application in an isolated container without installing Python dependencies locally.
+
+### Prerequisites
+*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
+*   (Optional) [Ollama](https://ollama.com/) running locally for local models.
+
+### 1. Build and Run
+```bash
+docker-compose up --build
+```
+This command will:
+1.  Build the Docker image.
+2.  Initialize the databases automatically.
+3.  Launch the Streamlit app on port 8501.
+
+### 2. Access the Agent
+Open your browser and navigate to:
+[http://localhost:8501](http://localhost:8501)
+
+### 3. Using Local LLMs (Ollama)
+If you are running Ollama on your host machine, simply select **"Local (Ollama)"** in the agent sidebar.
+*   **Base URL**: Use `http://host.docker.internal:11434` (Docker handles this network bridge automatically).
+*   **Model**: e.g., `llama3`.
+
+---
+
+## 🛠️ Local Installation (Alternative)
+
+If you prefer running without Docker:
+
+1.  **Create Virtual Environment**:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # Windows: venv\Scripts\activate
+    ```
+
+2.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Run System**:
+    ```bash
+    python initialize_system.py
+    streamlit run main.py
+    ```
+
+## 📂 Project Architecture
 
 ```text
 RAG-Agent-for-Liquidity---Cash-Management/
-├── main.py                   # 🧠 Core Agent Logic (Streamlit UI + LangChain)
-├── initialize_system.py      # ⚙️ Setup Script (Seeds SQL DB & Vector DB)
-├── financial_data.db         # 🗄️ Local SQLite DB (Mock Balances)
-├── chroma_db/                # 🗄️ Local Vector DB (Compliance Docs)
+├── Dockerfile                # 🐳 Container definition
+├── docker-compose.yml        # 🐳 Service orchestration
+├── main.py                   # 🧠 Core Agent Logic
+├── initialize_system.py      # ⚙️ Setup Script
+├── financial_data.db         # 🗄️ SQL DB (Persisted via Volume)
+├── chroma_db/                # 🗄️ Vector DB (Persisted via Volume)
 └── skills/                   # 🛠️ Modular Capabilities
-    ├── account_management/   # SQL Querying for Balances
-    ├── compliance/           # RAG System for Regulatory Checks
-    └── stress_testing/       # Python Simulation & Plotting
+    ├── account_management/
+    ├── compliance/
+    └── stress_testing/
 ```
-
-## 🛠️ Tech Stack
-
-*   **LLM Orchestration**: [LangChain](https://python.langchain.com/) (Tools, Agents)
-*   **Interface**: [Streamlit](https://streamlit.io/)
-*   **Database**: SQLite (Transactional), ChromaDB (Vector Store)
-*   **Models**: 
-    *   **OpenAI** (GPT-4o) - *Optional*
-    *   **Ollama** (Llama 3, Mistral) - *Supported for Local Privacy*
-*   **Visualization**: Matplotlib
-
-## ⚡ Quick Start
-
-### Prerequisites
-*   Python 3.10+
-*   (Optional) [Ollama](https://ollama.com/) installed for local model support.
-
-### 1. Installation
-
-```bash
-git clone https://github.com/hck717/RAG-Agent-for-Liquidity---Cash-Management.git
-cd RAG-Agent-for-Liquidity---Cash-Management
-pip install -r requirements.txt
-```
-
-### 2. System Initialization
-Run this script once to create the mock SQL database and ingest the sample compliance documents into the Vector DB.
-
-```bash
-python initialize_system.py
-```
-*Note: If you don't have an `OPENAI_API_KEY` set, this script will automatically default to using local HuggingFace embeddings.*
-
-### 3. Run the Agent
-
-```bash
-streamlit run main.py
-```
-
-## 📖 Usage Guide
-
-The Agent supports two modes: **OpenAI** (Cloud) and **Local (Ollama)**. You can switch between them in the sidebar.
-
-### Scenario 1: Cross-Border Transfer
-**User**: *"I want to send 5 Million USD from Hong Kong to Brazil. Are there any restrictions?"*
-
-**Agent Action (Plan & Execute)**:
-1.  **Check Balance**: Queries SQL DB -> *Finds Account Balance is $4M USD (Insufficient).*
-2.  **Check Compliance**: Queries RAG -> *Finds Brazil requires reporting for inflows >$10k and IOF tax applies.*
-3.  **Response**: *"You have insufficient funds ($4M vs $5M required). Additionally, Brazil requires an exchange contract for this amount..."*
-
-### Scenario 2: Liquidity Stress Test
-**User**: *"Run a stress test if HKD interest rate drops by 2% and our Brazil sales are delayed by 30 days."*
-
-**Agent Action**:
-1.  **Identify Variables**: Rate Change (-2%), Delay (+30 days).
-2.  **Run Simulation**: Calls `skills/stress_testing/simulation.py`.
-3.  **Visualize**: Generates `stress_test_result.png`.
-4.  **Response**: Displays the chart and warns: *"Critical: Liquidity turns negative on Day 15. You need to draw down $2M from the revolver."*
-
-## 🔧 Configuration
-
-*   **Environment Variables**: Create a `.env` file or set via terminal for OpenAI usage:
-    ```bash
-    export OPENAI_API_KEY="sk-..."
-    ```
-*   **Local Models**: Ensure your Ollama server is running (`ollama serve`). default URL is `http://localhost:11434`.
 
 ## 📜 License
 MIT
