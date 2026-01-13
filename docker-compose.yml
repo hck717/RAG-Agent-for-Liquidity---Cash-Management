@@ -7,14 +7,13 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      # We ONLY mount the directory, not the individual file, to avoid permission issues
-      # if the file doesn't exist yet on the host.
+      # Mount directory to avoid file permission issues
       - .:/app
-      # Alternatively, we can use named volumes for persistence if host mounting is tricky:
-      # - agent_data:/app/data
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Default to the Docker-friendly host URL for Mac
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
     extra_hosts:
+      # Essential for Linux/Windows, but on Mac Docker Desktop handles host.docker.internal automatically
       - "host.docker.internal:host-gateway"
     command: >
       sh -c "python initialize_system.py && streamlit run main.py"
