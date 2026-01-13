@@ -1,68 +1,38 @@
 import streamlit as st
-import sqlite3
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
+import sys
+
+# Add the repository root to sys.path to allow importing from skills
+sys.path.append(os.getcwd())
+
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.embeddings import HuggingFaceEmbeddings
+
+# Import Skills
+from skills.account_management.query_balance import execute_query
+from skills.compliance.rag_check import execute_rag_check
+from skills.stress_testing.simulation import execute_stress_test
 
 # --- Configuration ---
-DB_PATH = "financial_data.db"
-VECTOR_DB_PATH = "chroma_db"
 IMG_PATH = "stress_test_result.png"
 
 st.set_page_config(page_title="Liquidity & Cash Management Agent", layout="wide")
 
-# --- Tools ---
+# --- Define Tools Wrappers ---
+# These wrappers expose the modular skill scripts as Agent Tools
 
 @tool
 def get_account_balance(currency: str):
     """Query the SQL database to find the account balance for a specific currency."""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT account_id, balance, currency FROM accounts WHERE currency = ?", (currency,))
-    result = cursor.fetchall()
-    conn.close()
-    
-    if not result:
-        return f"No account found for currency {currency}."
-    
-    # Formatting result
-    response = ""
-    for row in result:
-        response += f"Account ID: {row[0]}, Balance: {row[1]:,.2f} {row[2]}\n"
-    return response
+    return execute_query(currency)
 
 @tool
 def check_compliance_rules(query: str):
     """Search the knowledge base (RAG) for compliance guidelines, specifically for FX and cross-border transfers."""
-    if not os.path.exists(VECTOR_DB_PATH):
-        return "Knowledge base not initialized."
-    
-    try:
-        # Detect Embedding Model based on Environment
-        if os.environ.get("OPENAI_API_KEY"):
-            embedding_function = OpenAIEmbeddings()
-        else:
-            embedding_function = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            
-        db = Chroma(persist_directory=VECTOR_DB_PATH, embedding_function=embedding_function)
-        retriever = db.as_retriever()
-        docs = retriever.invoke(query)
-        
-        if not docs:
-            return "No relevant compliance rules found."
-        
-        return "\n\n".join([doc.page_content for doc in docs])
-    except Exception as e:
-        return f"Error querying knowledge base: {str(e)}"
+    return execute_rag_check(query)
 
 @tool
 def run_stress_test(rate_drop_percent: float, receivables_delay_days: int):
@@ -74,68 +44,7 @@ def run_stress_test(rate_drop_percent: float, receivables_delay_days: int):
     Returns:
         A string summary of the result. The function also saves a plot to 'stress_test_result.png'.
     """
-    # Mock Simulation Logic
-    days = list(range(1, 31))
-    
-    # Baseline: Starting 5M, burns 100k/day, Payroll 2M on Day 15, Inflow 3M on Day 10
-    start_balance = 5000000
-    daily_burn = 100000
-    payroll_day = 15
-    payroll_amount = 2000000
-    base_inflow_day = 10
-    inflow_amount = 3000000
-    
-    stressed_cash = []
-    current_balance = start_balance
-    
-    for day in days:
-        # 1. Inflow Logic
-        actual_inflow_day = base_inflow_day + receivables_delay_days
-        if day == actual_inflow_day:
-            current_balance += inflow_amount
-            
-        # 2. Outflow Logic (Payroll)
-        if day == payroll_day:
-            current_balance -= payroll_amount
-            
-        # 3. Daily Burn
-        current_balance -= daily_burn
-        
-        # 4. Interest Rate Impact (Simplified: Lower rate = less interest income, treated as extra cost for simplicity)
-        # Assuming we earn 5% APY normally. Drop 2% means we earn less. 
-        # For a cash agent POC, we might simulate 'cost of carry' increasing if we go negative.
-        if current_balance < 0:
-            overdraft_fee = abs(current_balance) * (0.10 / 365) # 10% penalty rate
-            current_balance -= overdraft_fee
-            
-        stressed_cash.append(current_balance)
-        
-    # Generate Plot
-    plt.figure(figsize=(10, 5))
-    plt.plot(days, stressed_cash, marker='o', linestyle='-', color='b', label='Projected Balance')
-    plt.axhline(y=0, color='r', linestyle='--', label='Zero Balance')
-    plt.axvline(x=payroll_day, color='g', linestyle=':', label='Payroll Day')
-    
-    plt.title(f"Liquidity Stress Test (Rate -{rate_drop_percent}%, Delay {receivables_delay_days} days)")
-    plt.xlabel("Day")
-    plt.ylabel("Balance (HKD)")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(IMG_PATH)
-    plt.close()
-    
-    # Analyze Result
-    min_balance = min(stressed_cash)
-    negative_days = [d for d, b in zip(days, stressed_cash) if b < 0]
-    
-    result_msg = f"SIMULATION COMPLETE. Visual chart saved to {IMG_PATH}.\n"
-    if min_balance < 0:
-        result_msg += f"CRITICAL: Liquidity shortage detected. Minimum balance hits {min_balance:,.2f} on Day {negative_days[0]}.\n"
-        result_msg += f"You will need to draw down from your revolver facility to cover payroll on Day {payroll_day}."
-    else:
-        result_msg += f"Status OK. Minimum balance is {min_balance:,.2f}. Liquidity remains positive."
-        
-    return result_msg
+    return execute_stress_test(rate_drop_percent, receivables_delay_days)
 
 # --- Agent Setup ---
 def get_agent(llm_choice, openai_api_key=None, local_model_name="llama3", local_base_url="http://localhost:11434"):
@@ -149,13 +58,30 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="llama3", local_
         # Local (Ollama)
         llm = ChatOllama(model=local_model_name, base_url=local_base_url, temperature=0)
 
+    # Agent System Prompt designed for "Plan and Execute" mindset
+    system_prompt = """You are an expert Corporate Treasury AI Agent.
+    
+    Your goal is to assist with liquidity management, compliance checks, and stress testing.
+    
+    **Instructions for Complex Tasks (Plan and Execute):**
+    1. **Plan**: When a user asks a complex question (e.g., "Can I send money?"), first analyze what information is missing.
+       - Do you know the account balance? (Call `get_account_balance`)
+       - Do you know the compliance rules? (Call `check_compliance_rules`)
+    2. **Execute**: Call the necessary tools one by one.
+    3. **Analyze**: Combine the outputs (e.g., "Balance is $4M, but Limit is $10k") to form a final answer.
+    
+    **Instructions for Stress Testing:**
+    - If the user asks for a stress test, identify the variables (Interest Rate Change, Payment Delay Days).
+    - If values are missing, ask the user or assume reasonable defaults (and state them).
+    - Call `run_stress_test`.
+    - ALWAYS mention that a chart has been generated and displayed.
+    
+    **General:**
+    - Always cite your sources (e.g., "According to the database...", "The compliance rules state...").
+    """
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful Corporate Treasury AI Assistant. "
-                   "You verify account balances using SQL tools. "
-                   "You check compliance regulations using RAG tools. "
-                   "You can run stress tests simulations using the 'run_stress_test' tool. "
-                   "If you run a stress test, always mention that a chart has been generated."
-                   "Always cite your source (e.g., 'According to the database...', 'Based on the compliance guidelines...')."),
+        ("system", system_prompt),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
@@ -167,6 +93,7 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="llama3", local_
 # --- UI Layout ---
 st.title("💰 Corporate Treasury AI Agent")
 st.markdown("POC: Liquidity Management & Compliance Checker")
+st.caption("Powered by Agentic Skills: `Account Management`, `Compliance Check`, `Stress Testing`")
 
 # Sidebar for Config
 with st.sidebar:
