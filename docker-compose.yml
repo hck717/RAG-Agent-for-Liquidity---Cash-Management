@@ -7,14 +7,13 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      # Persist databases and results so they survive container restarts
-      - ./financial_data.db:/app/financial_data.db
-      - ./chroma_db:/app/chroma_db
-      - ./docs:/app/docs
-      - ./stress_test_result.png:/app/stress_test_result.png
+      # We ONLY mount the directory, not the individual file, to avoid permission issues
+      # if the file doesn't exist yet on the host.
+      - .:/app
+      # Alternatively, we can use named volumes for persistence if host mounting is tricky:
+      # - agent_data:/app/data
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    # This allows the container to talk to Ollama running on your host machine
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >
