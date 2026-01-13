@@ -11,6 +11,30 @@ A conversational AI agent designed for Corporate Treasury teams to automate liqu
 *   **⚠️ Agentic Stress Testing**: Runs Python simulations to forecast cash flow under stress scenarios and generates charts.
 *   **🔒 Data Privacy First**: Supports **Local LLMs (Ollama)** via Docker integration.
 
+## 🧠 How It Works: Agentic Architecture
+
+This agent uses a **Plan-and-Execute** reasoning loop (ReAct) to solve complex treasury problems. Instead of just "chatting," it actively uses tools.
+
+### 1. Plan-and-Execute Workflow
+When you ask a complex question like *"Can I send 5M USD to Brazil?"*, the agent doesn't guess. It breaks it down:
+
+1.  **Thought (Reasoning)**: "I need to check two things: Do we have the money? And is it allowed?"
+2.  **Action 1**: Calls `get_account_balance("USD")` → *Result: $4,000,000*
+3.  **Observation**: "We only have $4M. That is insufficient for a $5M transfer."
+4.  **Action 2**: Calls `check_compliance_rules("Brazil inbound payment")` → *Result: Requires FX contract for amounts > $10k.*
+5.  **Final Answer**: "You cannot send $5M because you only have $4M. Additionally, Brazil requires an FX contract for this amount."
+
+### 2. Modular "Skills"
+The agent's brain is connected to specific Python functions (Skills) that it can trigger anytime:
+
+| Skill | Function | How It Works |
+| :--- | :--- | :--- |
+| **Account Management** | `get_account_balance` | Executes a **SQL query** (`SELECT balance FROM accounts...`) on the local SQLite database to get trusted financial data. |
+| **Compliance (RAG)** | `check_compliance_rules` | Uses **Vector Search** (ChromaDB) to find relevant paragraphs in your uploaded PDF policy documents. |
+| **Stress Testing** | `run_stress_test` | Runs a **Python Simulation** (Matplotlib + Pandas) to project future cash flows and renders a chart directly in the chat. |
+
+---
+
 ## 🐳 Docker Quick Start (Recommended)
 
 Run the entire application in an isolated container without installing Python dependencies locally.
