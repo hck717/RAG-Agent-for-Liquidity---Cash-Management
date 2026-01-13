@@ -5,16 +5,17 @@ import sys
 # Add the repository root to sys.path to allow importing from skills
 sys.path.append(os.getcwd())
 
-# Fix: Import AgentExecutor and create_openai_tools_agent correctly
-# In newer LangChain versions, create_openai_tools_agent might be in langchain.agents.openai_tools.agent
-# However, for stability, we will try the top-level import first, and if that fails, use the constructor.
-# But for now, let's fix the specific ImportError reported.
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-# Note: create_openai_tools_agent is deprecated in favor of create_tool_calling_agent in very new versions,
-# OR it resides in langchain.agents. 
-# If 'create_openai_tools_agent' is missing, likely 'langchain-openai' package provides it 
-# or we should use 'create_tool_calling_agent' which is more generic.
-# Let's switch to the more modern 'create_tool_calling_agent' which works with Ollama too.
+# Fix: Import AgentExecutor and create_tool_calling_agent
+# LangChain structure varies by version.
+# create_tool_calling_agent is in langchain.agents since 0.1.15
+# AgentExecutor is typically in langchain.agents, but sometimes explicit import helps.
+
+try:
+    from langchain.agents import AgentExecutor, create_tool_calling_agent
+except ImportError:
+    # Fallback for some versions
+    from langchain.agents.agent import AgentExecutor
+    from langchain.agents import create_tool_calling_agent
 
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
