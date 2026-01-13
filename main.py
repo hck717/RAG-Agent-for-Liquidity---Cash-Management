@@ -5,7 +5,10 @@ import sys
 # Add the repository root to sys.path to allow importing from skills
 sys.path.append(os.getcwd())
 
-from langchain.agents import AgentExecutor, create_openai_tools_agent
+# Fix: Import AgentExecutor from the new location in newer LangChain versions if needed, 
+# or explicit sub-module for older/newer compatibility. 
+# Attempting direct import first, but falling back to specific module structure.
+from langchain.agents import create_openai_tools_agent, AgentExecutor
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
