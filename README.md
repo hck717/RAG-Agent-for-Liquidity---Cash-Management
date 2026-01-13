@@ -17,10 +17,20 @@ Run the entire application in an isolated container without installing Python de
 
 ### Prerequisites
 *   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
-*   (Optional) [Ollama](https://ollama.com/) running locally for local models.
+*   [Ollama](https://ollama.com/) installed for local models (Works great on M1/M2 Macs!).
 
-### 1. Build and Run
+### 1. Prepare Local Model (One-time setup)
+Open your terminal and pull the Llama 3 model. This allows the agent to run offline.
 ```bash
+ollama run llama3
+```
+*Keep this terminal window running or ensure the Ollama app is active.*
+
+### 2. Build and Run
+Navigate to the project folder and start the container:
+
+```bash
+cd RAG-Agent-for-Liquidity---Cash-Management
 docker-compose up --build
 ```
 This command will:
@@ -28,14 +38,15 @@ This command will:
 2.  Initialize the databases automatically.
 3.  Launch the Streamlit app on port 8501.
 
-### 2. Access the Agent
+### 3. Access the Agent
 Open your browser and navigate to:
 [http://localhost:8501](http://localhost:8501)
 
-### 3. Using Local LLMs (Ollama)
-If you are running Ollama on your host machine, simply select **"Local (Ollama)"** in the agent sidebar.
-*   **Base URL**: Use `http://host.docker.internal:11434` (Docker handles this network bridge automatically).
-*   **Model**: e.g., `llama3`.
+### 4. Configure Agent for Local LLM
+In the Agent Sidebar:
+*   Select **"Local (Ollama)"**.
+*   **Base URL**: Use `http://host.docker.internal:11434` (Docker handles the connection to your host machine).
+*   **Model**: Type `llama3`.
 
 ---
 
