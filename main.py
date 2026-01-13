@@ -68,7 +68,7 @@ Your goal is to assist with liquidity management, compliance checks, and stress 
 """
 
 # --- Agent Setup ---
-def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", local_base_url="http://localhost:11434"):
+def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", local_base_url="http://host.docker.internal:11434"):
     tools = [get_account_balance, check_compliance_rules, run_stress_test]
     
     if llm_choice == "OpenAI":
@@ -79,8 +79,6 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
         # Local (Ollama)
         llm = ChatOllama(model=local_model_name, base_url=local_base_url, temperature=0)
     
-    # Fix: Do NOT pass system prompt here to avoid 'unexpected keyword argument' errors.
-    # We will pass it as the first message in the state during invoke.
     agent_graph = create_react_agent(llm, tools)
     return agent_graph
 
@@ -104,8 +102,8 @@ with st.sidebar:
     llm_provider = st.radio("LLM Provider", ["OpenAI", "Local (Ollama)"])
     
     api_key = ""
-    local_model = "gemma3:1b"
-    local_url = "http://localhost:11434"
+    # Retrieve default from env or use the Docker-friendly default
+    default_url = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
     
     if llm_provider == "OpenAI":
         api_key = st.text_input("OpenAI API Key", type="password")
@@ -114,7 +112,7 @@ with st.sidebar:
     else:
         st.info("Ensure Ollama is running locally: `ollama run gemma3:1b`")
         local_model = st.text_input("Model Name", "gemma3:1b")
-        local_url = st.text_input("Base URL", "http://localhost:11434")
+        local_url = st.text_input("Base URL", value=default_url)
     
     st.markdown("---")
     if st.button("Initialize System (Reset DBs)"):
@@ -164,9 +162,9 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
 
     with st.chat_message("assistant"):
         try:
+            # Pass the configured URL from the sidebar
             agent = get_agent(llm_provider, api_key, local_model, local_url)
             with st.spinner("Agent is thinking..."):
-                # Fix: Pass System Prompt as the first message here
                 inputs = {
                     "messages": [
                         SystemMessage(content=SYSTEM_PROMPT),
@@ -176,8 +174,6 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
                 
                 response = agent.invoke(inputs)
                 
-                # Extract final response
-                # LangGraph returns a list of messages. The last one is the AI's final answer.
                 final_content = response["messages"][-1].content
                 
                 st.markdown(final_content)
