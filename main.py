@@ -47,7 +47,7 @@ def run_stress_test(rate_drop_percent: float, receivables_delay_days: int):
     return execute_stress_test(rate_drop_percent, receivables_delay_days)
 
 # --- Agent Setup ---
-def get_agent(llm_choice, openai_api_key=None, local_model_name="llama3", local_base_url="http://localhost:11434"):
+def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", local_base_url="http://localhost:11434"):
     tools = [get_account_balance, check_compliance_rules, run_stress_test]
     
     if llm_choice == "OpenAI":
@@ -101,7 +101,7 @@ with st.sidebar:
     llm_provider = st.radio("LLM Provider", ["OpenAI", "Local (Ollama)"])
     
     api_key = ""
-    local_model = "llama3"
+    local_model = "gemma3:1b"
     local_url = "http://localhost:11434"
     
     if llm_provider == "OpenAI":
@@ -109,8 +109,8 @@ with st.sidebar:
         if api_key:
             os.environ["OPENAI_API_KEY"] = api_key
     else:
-        st.info("Ensure Ollama is running locally: `ollama run llama3`")
-        local_model = st.text_input("Model Name", "llama3")
+        st.info("Ensure Ollama is running locally: `ollama run gemma3:1b`")
+        local_model = st.text_input("Model Name", "gemma3:1b")
         local_url = st.text_input("Base URL", "http://localhost:11434")
     
     st.markdown("---")
