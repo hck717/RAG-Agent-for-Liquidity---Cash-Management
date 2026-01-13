@@ -50,6 +50,32 @@ In the Agent Sidebar:
 
 ---
 
+## 💡 Example Queries (Try These!)
+
+Copy and paste these inputs into the chat to see the different capabilities of the Agent:
+
+### 1. Simple Liquidity Check (SQL)
+> "What is the current balance in our HKD account?"
+*Demonstrates querying the local SQL database for real-time financial data.*
+
+### 2. Regulatory Compliance Check (RAG)
+> "What are the documentation requirements for inbound payments to Brazil?"
+*Demonstrates searching the internal knowledge base (PDF/Docs) using Vector Search.*
+
+### 3. Stress Test Simulation (Python)
+> "Run a stress test: interest rate -2% and 30-day payment delay."
+*Demonstrates generating a Python simulation and rendering a Matplotlib chart.*
+
+### 4. Plan-and-Execute (Complex)
+> "I need to send 5M USD to Brazil. Do we have enough funds and what are the rules?"
+*Demonstrates the agent's ability to break down a complex request, check balances (Skill 1), check compliance (Skill 2), and synthesize a final answer.*
+
+### 5. Scenario Analysis
+> "Simulate a 45-day sales delay. Will we go negative?"
+*Demonstrates interpreting simulation results to provide strategic advice.*
+
+---
+
 ## 🛠️ Local Installation (Alternative)
 
 If you prefer running without Docker:
