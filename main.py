@@ -10,7 +10,7 @@ from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 # Import Skills
 from skills.account_management.query_balance import execute_query
@@ -58,7 +58,7 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
         llm = ChatOllama(model=local_model_name, base_url=local_base_url, temperature=0)
 
     # System Prompt for the Agent
-    system_prompt = """You are an expert Corporate Treasury AI Agent.
+    system_prompt_text = """You are an expert Corporate Treasury AI Agent.
     
     Your goal is to assist with liquidity management, compliance checks, and stress testing.
     
@@ -79,8 +79,11 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
     - Always cite your sources (e.g., "According to the database...", "The compliance rules state...").
     """
     
-    # Create the ReAct agent using LangGraph
-    agent_graph = create_react_agent(llm, tools, state_modifier=system_prompt)
+    # Fix: Use 'messages_modifier' (or check_pointer, but here we want to set system instructions)
+    # In older versions of LangGraph prebuilt, it might be strict.
+    # We will pass the system message directly in the messages_modifier argument which accepts a SystemMessage or string.
+    
+    agent_graph = create_react_agent(llm, tools, messages_modifier=system_prompt_text)
     return agent_graph
 
 # --- Helper to safely display image ---
