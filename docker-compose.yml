@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  agent-app:
+    build: .
+    container_name: liquidity-agent
+    ports:
+      - "8501:8501"
+    volumes:
+      # Persist databases and results so they survive container restarts
+      - ./financial_data.db:/app/financial_data.db
+      - ./chroma_db:/app/chroma_db
+      - ./docs:/app/docs
+      - ./stress_test_result.png:/app/stress_test_result.png
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    # This allows the container to talk to Ollama running on your host machine
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      sh -c "python initialize_system.py && streamlit run main.py"
