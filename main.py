@@ -5,22 +5,12 @@ import sys
 # Add the repository root to sys.path to allow importing from skills
 sys.path.append(os.getcwd())
 
-# Fix: Import AgentExecutor and create_tool_calling_agent
-# LangChain structure varies by version.
-# create_tool_calling_agent is in langchain.agents since 0.1.15
-# AgentExecutor is typically in langchain.agents, but sometimes explicit import helps.
-
-try:
-    from langchain.agents import AgentExecutor, create_tool_calling_agent
-except ImportError:
-    # Fallback for some versions
-    from langchain.agents.agent import AgentExecutor
-    from langchain.agents import create_tool_calling_agent
-
+# Modern LangGraph Implementation
+from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage
 
 # Import Skills
 from skills.account_management.query_balance import execute_query
@@ -67,7 +57,7 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
         # Local (Ollama)
         llm = ChatOllama(model=local_model_name, base_url=local_base_url, temperature=0)
 
-    # Agent System Prompt designed for "Plan and Execute" mindset
+    # System Prompt for the Agent
     system_prompt = """You are an expert Corporate Treasury AI Agent.
     
     Your goal is to assist with liquidity management, compliance checks, and stress testing.
@@ -77,7 +67,7 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
        - Do you know the account balance? (Call `get_account_balance`)
        - Do you know the compliance rules? (Call `check_compliance_rules`)
     2. **Execute**: Call the necessary tools one by one.
-    3. **Analyze**: Combine the outputs (e.g., "Balance is $4M, but Limit is $10k") to form a final answer.
+    3. **Analyze**: Combine the outputs to form a final answer.
     
     **Instructions for Stress Testing:**
     - If the user asks for a stress test, identify the variables (Interest Rate Change, Payment Delay Days).
@@ -89,16 +79,9 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
     - Always cite your sources (e.g., "According to the database...", "The compliance rules state...").
     """
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("user", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
-    
-    # Use create_tool_calling_agent which is the modern standard for tool-use
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-    return agent_executor
+    # Create the ReAct agent using LangGraph (replaces legacy AgentExecutor)
+    agent_graph = create_react_agent(llm, tools, state_modifier=system_prompt)
+    return agent_graph
 
 # --- UI Layout ---
 st.title("💰 Corporate Treasury AI Agent")
@@ -169,12 +152,18 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
         try:
             agent = get_agent(llm_provider, api_key, local_model, local_url)
             with st.spinner("Agent is thinking..."):
-                response = agent.invoke({"input": prompt})
-                st.markdown(response["output"])
-                st.session_state.messages.append({"role": "assistant", "content": response["output"]})
+                # LangGraph Invoke: Returns dictionary with 'messages'
+                inputs = {"messages": [HumanMessage(content=prompt)]}
+                response = agent.invoke(inputs)
+                
+                # Extract the final AI message content
+                final_content = response["messages"][-1].content
+                
+                st.markdown(final_content)
+                st.session_state.messages.append({"role": "assistant", "content": final_content})
                 
                 # Refresh if chart was just created
-                if "stress_test_result.png" in response["output"] or "chart" in response["output"].lower():
+                if "stress_test_result.png" in final_content or "chart" in final_content.lower():
                     if os.path.exists(IMG_PATH):
                         st.image(IMG_PATH, caption="Latest Stress Test Result")
                         
