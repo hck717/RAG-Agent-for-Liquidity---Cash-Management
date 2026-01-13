@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.text_splitter import CharacterTextSplitter
 import shutil
@@ -60,13 +61,6 @@ def setup_sql_db():
 def setup_vector_db():
     print(f"Setting up Vector database at {VECTOR_DB_PATH}...")
     
-    # Check if API Key is set (User will need to set this in .env)
-    if not os.environ.get("OPENAI_API_KEY"):
-        print("WARNING: OPENAI_API_KEY not found in environment variables. Vector DB generation might fail if not using local embeddings.")
-        # In a real scenario, we might default to a local embedding model like HuggingFace if no key is present.
-        # For this POC, we assume the user will provide it or we code a fallback if requested.
-        pass
-
     # Load Documents
     if not os.path.exists(DOCS_PATH):
         os.makedirs(DOCS_PATH)
@@ -85,12 +79,17 @@ def setup_vector_db():
     docs = text_splitter.split_documents(documents)
 
     # Embed and Store
-    # Note: This requires an OpenAI API Key. 
-    # For a purely local setup, one would use OllamaEmbeddings or HuggingFaceEmbeddings.
     try:
-        embedding_function = OpenAIEmbeddings()
+        # Determine Embedding Model
+        if os.environ.get("OPENAI_API_KEY"):
+            print("Using OpenAI Embeddings...")
+            embedding_function = OpenAIEmbeddings()
+        else:
+            print("OPENAI_API_KEY not found. Using Local Embeddings (HuggingFace)...")
+            # Using a small, fast local model suitable for CPU
+            embedding_function = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         
-        # Clear old DB if exists to avoid duplicates in this POC script
+        # Clear old DB if exists to avoid duplicates/conflicts
         if os.path.exists(VECTOR_DB_PATH):
             shutil.rmtree(VECTOR_DB_PATH)
             
@@ -99,7 +98,6 @@ def setup_vector_db():
         print("Vector database setup complete.")
     except Exception as e:
         print(f"Failed to create Vector DB: {e}")
-        print("Ensure OPENAI_API_KEY is set or modify the script to use local embeddings.")
 
 if __name__ == "__main__":
     setup_sql_db()
