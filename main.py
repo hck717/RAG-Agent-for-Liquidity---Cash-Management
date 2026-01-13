@@ -5,10 +5,17 @@ import sys
 # Add the repository root to sys.path to allow importing from skills
 sys.path.append(os.getcwd())
 
-# Fix: Import AgentExecutor from the new location in newer LangChain versions if needed, 
-# or explicit sub-module for older/newer compatibility. 
-# Attempting direct import first, but falling back to specific module structure.
-from langchain.agents import create_openai_tools_agent, AgentExecutor
+# Fix: Import AgentExecutor and create_openai_tools_agent correctly
+# In newer LangChain versions, create_openai_tools_agent might be in langchain.agents.openai_tools.agent
+# However, for stability, we will try the top-level import first, and if that fails, use the constructor.
+# But for now, let's fix the specific ImportError reported.
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+# Note: create_openai_tools_agent is deprecated in favor of create_tool_calling_agent in very new versions,
+# OR it resides in langchain.agents. 
+# If 'create_openai_tools_agent' is missing, likely 'langchain-openai' package provides it 
+# or we should use 'create_tool_calling_agent' which is more generic.
+# Let's switch to the more modern 'create_tool_calling_agent' which works with Ollama too.
+
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
@@ -25,8 +32,6 @@ IMG_PATH = "stress_test_result.png"
 st.set_page_config(page_title="Liquidity & Cash Management Agent", layout="wide")
 
 # --- Define Tools Wrappers ---
-# These wrappers expose the modular skill scripts as Agent Tools
-
 @tool
 def get_account_balance(currency: str):
     """Query the SQL database to find the account balance for a specific currency."""
@@ -89,7 +94,8 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
     
-    agent = create_openai_tools_agent(llm, tools, prompt)
+    # Use create_tool_calling_agent which is the modern standard for tool-use
+    agent = create_tool_calling_agent(llm, tools, prompt)
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
     return agent_executor
 
