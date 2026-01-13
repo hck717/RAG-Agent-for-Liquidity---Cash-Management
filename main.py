@@ -20,6 +20,9 @@ from skills.stress_testing.simulation import execute_stress_test
 # --- Configuration ---
 IMG_PATH = "stress_test_result.png"
 
+# DEFAULT MODEL CHANGED to llama3.2 which supports tool calling
+DEFAULT_MODEL = "llama3.2" 
+
 st.set_page_config(page_title="Liquidity & Cash Management Agent", layout="wide")
 
 # --- Define Tools Wrappers ---
@@ -68,7 +71,7 @@ Your goal is to assist with liquidity management, compliance checks, and stress 
 """
 
 # --- Agent Setup ---
-def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", local_base_url="http://host.docker.internal:11434"):
+def get_agent(llm_choice, openai_api_key=None, local_model_name=DEFAULT_MODEL, local_base_url="http://host.docker.internal:11434"):
     tools = [get_account_balance, check_compliance_rules, run_stress_test]
     
     if llm_choice == "OpenAI":
@@ -77,8 +80,10 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
         llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=openai_api_key)
     else:
         # Local (Ollama)
+        # Note: Model must support tool calling (e.g., llama3.1, llama3.2, mistral-nemo)
         llm = ChatOllama(model=local_model_name, base_url=local_base_url, temperature=0)
     
+    # Create the ReAct agent
     agent_graph = create_react_agent(llm, tools)
     return agent_graph
 
@@ -110,8 +115,11 @@ with st.sidebar:
         if api_key:
             os.environ["OPENAI_API_KEY"] = api_key
     else:
-        st.info("Ensure Ollama is running locally: `ollama run gemma3:1b`")
-        local_model = st.text_input("Model Name", "gemma3:1b")
+        st.warning("⚠️ Requirement: Use a model that supports Tool Calling (e.g., llama3.2, llama3.1, mistral-nemo).")
+        st.info("Run: `ollama run llama3.2`")
+        
+        # Default to llama3.2 which is small, fast, and supports tools
+        local_model = st.text_input("Model Name", DEFAULT_MODEL)
         local_url = st.text_input("Base URL", value=default_url)
     
     st.markdown("---")
@@ -183,4 +191,7 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
                      display_stress_test_chart()
                         
         except Exception as e:
-            st.error(f"Error: {e}")
+            if "does not support tools" in str(e):
+                st.error("❌ Model Error: The selected model does not support tool calling. Please use `llama3.2` or `llama3.1`.")
+            else:
+                st.error(f"Error: {e}")
