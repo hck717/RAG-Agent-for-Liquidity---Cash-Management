@@ -9,7 +9,7 @@ A conversational AI agent designed for Corporate Treasury teams to automate liqu
 *   **📈 Real-time Balance Checking**: Queries a local SQL database to retrieve up-to-date account balances.
 *   **⚖️ Compliance & Regulatory Check (RAG)**: Retrieves foreign exchange (FX) rules using Vector Search (ChromaDB).
 *   **⚠️ Agentic Stress Testing**: Runs Python simulations to forecast cash flow under stress scenarios and generates charts.
-*   **🔒 Data Privacy First**: Supports **Local LLMs (Ollama/Llama 3)** via Docker integration.
+*   **🔒 Data Privacy First**: Supports **Local LLMs (Ollama)** via Docker integration.
 
 ## 🐳 Docker Quick Start (Recommended)
 
@@ -17,14 +17,14 @@ Run the entire application in an isolated container without installing Python de
 
 ### Prerequisites
 *   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
-*   [Ollama](https://ollama.com/) installed for local models (Works great on M1/M2 Macs!).
+*   [Ollama](https://ollama.com/) installed for local models.
 
 ### 1. Prepare Local Model (One-time setup)
-Open your terminal and pull the Llama 3 model. This allows the agent to run offline.
+Open your terminal and pull the lightweight Gemma 3 (1B) model.
 ```bash
-ollama run llama3
+ollama run gemma3:1b
 ```
-*Keep this terminal window running or ensure the Ollama app is active.*
+*Note: We recommend `gemma3:1b` for MacBook Air M1/M2 for best performance (fast tokens/sec).*
 
 ### 2. Build and Run
 Navigate to the project folder and start the container:
@@ -46,7 +46,7 @@ Open your browser and navigate to:
 In the Agent Sidebar:
 *   Select **"Local (Ollama)"**.
 *   **Base URL**: Use `http://host.docker.internal:11434` (Docker handles the connection to your host machine).
-*   **Model**: Type `llama3`.
+*   **Model**: Type `gemma3:1b`.
 
 ---
 
