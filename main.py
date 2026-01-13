@@ -45,6 +45,28 @@ def run_stress_test(rate_drop_percent: float, receivables_delay_days: int):
     """
     return execute_stress_test(rate_drop_percent, receivables_delay_days)
 
+# --- System Prompt ---
+SYSTEM_PROMPT = """You are an expert Corporate Treasury AI Agent.
+
+Your goal is to assist with liquidity management, compliance checks, and stress testing.
+
+**Instructions for Complex Tasks (Plan and Execute):**
+1. **Plan**: When a user asks a complex question (e.g., "Can I send money?"), first analyze what information is missing.
+   - Do you know the account balance? (Call `get_account_balance`)
+   - Do you know the compliance rules? (Call `check_compliance_rules`)
+2. **Execute**: Call the necessary tools one by one.
+3. **Analyze**: Combine the outputs to form a final answer.
+
+**Instructions for Stress Testing:**
+- If the user asks for a stress test, identify the variables (Interest Rate Change, Payment Delay Days).
+- If values are missing, ask the user or assume reasonable defaults (and state them).
+- Call `run_stress_test`.
+- ALWAYS mention that a chart has been generated and displayed.
+
+**General:**
+- Always cite your sources (e.g., "According to the database...", "The compliance rules state...").
+"""
+
 # --- Agent Setup ---
 def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", local_base_url="http://localhost:11434"):
     tools = [get_account_balance, check_compliance_rules, run_stress_test]
@@ -56,34 +78,10 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
     else:
         # Local (Ollama)
         llm = ChatOllama(model=local_model_name, base_url=local_base_url, temperature=0)
-
-    # System Prompt for the Agent
-    system_prompt_text = """You are an expert Corporate Treasury AI Agent.
     
-    Your goal is to assist with liquidity management, compliance checks, and stress testing.
-    
-    **Instructions for Complex Tasks (Plan and Execute):**
-    1. **Plan**: When a user asks a complex question (e.g., "Can I send money?"), first analyze what information is missing.
-       - Do you know the account balance? (Call `get_account_balance`)
-       - Do you know the compliance rules? (Call `check_compliance_rules`)
-    2. **Execute**: Call the necessary tools one by one.
-    3. **Analyze**: Combine the outputs to form a final answer.
-    
-    **Instructions for Stress Testing:**
-    - If the user asks for a stress test, identify the variables (Interest Rate Change, Payment Delay Days).
-    - If values are missing, ask the user or assume reasonable defaults (and state them).
-    - Call `run_stress_test`.
-    - ALWAYS mention that a chart has been generated and displayed.
-    
-    **General:**
-    - Always cite your sources (e.g., "According to the database...", "The compliance rules state...").
-    """
-    
-    # Fix: Use 'messages_modifier' (or check_pointer, but here we want to set system instructions)
-    # In older versions of LangGraph prebuilt, it might be strict.
-    # We will pass the system message directly in the messages_modifier argument which accepts a SystemMessage or string.
-    
-    agent_graph = create_react_agent(llm, tools, messages_modifier=system_prompt_text)
+    # Fix: Do NOT pass system prompt here to avoid 'unexpected keyword argument' errors.
+    # We will pass it as the first message in the state during invoke.
+    agent_graph = create_react_agent(llm, tools)
     return agent_graph
 
 # --- Helper to safely display image ---
@@ -93,7 +91,6 @@ def display_stress_test_chart():
         try:
             st.image(IMG_PATH, caption="Latest Stress Test Result")
         except Exception:
-            # If for any reason it fails (e.g. partial write), ignore it to prevent crashing
             pass
 
 # --- UI Layout ---
@@ -123,7 +120,6 @@ with st.sidebar:
     if st.button("Initialize System (Reset DBs)"):
         with st.spinner("Initializing databases..."):
             os.system("python initialize_system.py")
-            # Clear image if it exists to avoid stale state
             if os.path.exists(IMG_PATH):
                 try:
                     os.remove(IMG_PATH)
@@ -159,7 +155,6 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # --- Fix: Safer Image Rendering ---
-# Only display at startup if valid
 display_stress_test_chart()
 
 if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
@@ -171,17 +166,23 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
         try:
             agent = get_agent(llm_provider, api_key, local_model, local_url)
             with st.spinner("Agent is thinking..."):
-                # LangGraph Invoke
-                inputs = {"messages": [HumanMessage(content=prompt)]}
+                # Fix: Pass System Prompt as the first message here
+                inputs = {
+                    "messages": [
+                        SystemMessage(content=SYSTEM_PROMPT),
+                        HumanMessage(content=prompt)
+                    ]
+                }
+                
                 response = agent.invoke(inputs)
                 
-                # Extract the final AI message content
+                # Extract final response
+                # LangGraph returns a list of messages. The last one is the AI's final answer.
                 final_content = response["messages"][-1].content
                 
                 st.markdown(final_content)
                 st.session_state.messages.append({"role": "assistant", "content": final_content})
                 
-                # Refresh if chart was likely created/updated
                 if "stress_test_result.png" in final_content or "chart" in final_content.lower():
                      display_stress_test_chart()
                         
