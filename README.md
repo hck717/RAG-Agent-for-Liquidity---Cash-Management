@@ -20,11 +20,11 @@ Run the entire application in an isolated container without installing Python de
 *   [Ollama](https://ollama.com/) installed for local models.
 
 ### 1. Prepare Local Model (One-time setup)
-Open your terminal and pull the lightweight Gemma 3 (1B) model.
+Open your terminal and pull the **Llama 3.2** model (recommended for tool calling support).
 ```bash
-ollama run gemma3:1b
+ollama run llama3.2
 ```
-*Note: We recommend `gemma3:1b` for MacBook Air M1/M2 for best performance (fast tokens/sec).*
+*Note: We previously recommended `gemma3:1b`, but it does not support tool calling. Use `llama3.2` or `mistral-nemo`.*
 
 ### 2. Build and Run
 Navigate to the project folder and start the container:
@@ -46,7 +46,7 @@ Open your browser and navigate to:
 In the Agent Sidebar:
 *   Select **"Local (Ollama)"**.
 *   **Base URL**: Use `http://host.docker.internal:11434` (Docker handles the connection to your host machine).
-*   **Model**: Type `gemma3:1b`.
+*   **Model**: Type `llama3.2` (Default).
 
 ---
 
