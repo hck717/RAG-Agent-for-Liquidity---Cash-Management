@@ -79,9 +79,19 @@ def get_agent(llm_choice, openai_api_key=None, local_model_name="gemma3:1b", loc
     - Always cite your sources (e.g., "According to the database...", "The compliance rules state...").
     """
     
-    # Create the ReAct agent using LangGraph (replaces legacy AgentExecutor)
+    # Create the ReAct agent using LangGraph
     agent_graph = create_react_agent(llm, tools, state_modifier=system_prompt)
     return agent_graph
+
+# --- Helper to safely display image ---
+def display_stress_test_chart():
+    """Checks if the chart exists and is valid before rendering."""
+    if os.path.exists(IMG_PATH) and os.path.getsize(IMG_PATH) > 0:
+        try:
+            st.image(IMG_PATH, caption="Latest Stress Test Result")
+        except Exception:
+            # If for any reason it fails (e.g. partial write), ignore it to prevent crashing
+            pass
 
 # --- UI Layout ---
 st.title("💰 Corporate Treasury AI Agent")
@@ -110,6 +120,12 @@ with st.sidebar:
     if st.button("Initialize System (Reset DBs)"):
         with st.spinner("Initializing databases..."):
             os.system("python initialize_system.py")
+            # Clear image if it exists to avoid stale state
+            if os.path.exists(IMG_PATH):
+                try:
+                    os.remove(IMG_PATH)
+                except:
+                    pass
             st.success("System Initialized!")
 
     st.markdown("---")
@@ -139,9 +155,9 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Display generated chart if it exists and is recent (naive check)
-if os.path.exists(IMG_PATH):
-    st.image(IMG_PATH, caption="Latest Stress Test Result")
+# --- Fix: Safer Image Rendering ---
+# Only display at startup if valid
+display_stress_test_chart()
 
 if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -152,7 +168,7 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
         try:
             agent = get_agent(llm_provider, api_key, local_model, local_url)
             with st.spinner("Agent is thinking..."):
-                # LangGraph Invoke: Returns dictionary with 'messages'
+                # LangGraph Invoke
                 inputs = {"messages": [HumanMessage(content=prompt)]}
                 response = agent.invoke(inputs)
                 
@@ -162,10 +178,9 @@ if prompt := st.chat_input("Ask about cash, compliance, or stress tests..."):
                 st.markdown(final_content)
                 st.session_state.messages.append({"role": "assistant", "content": final_content})
                 
-                # Refresh if chart was just created
+                # Refresh if chart was likely created/updated
                 if "stress_test_result.png" in final_content or "chart" in final_content.lower():
-                    if os.path.exists(IMG_PATH):
-                        st.image(IMG_PATH, caption="Latest Stress Test Result")
+                     display_stress_test_chart()
                         
         except Exception as e:
             st.error(f"Error: {e}")
