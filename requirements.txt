@@ -1,0 +1,16 @@
+langchain
+langchain-community
+langchain-openai
+langchain-ollama
+langgraph
+chromadb
+pandas
+matplotlib
+sqlalchemy
+python-dotenv
+streamlit
+openai
+tiktoken
+sentence-transformers
+langchain-text-splitters
+langchain-huggingface

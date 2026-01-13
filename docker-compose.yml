@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  agent-app:
+    build: .
+    container_name: liquidity-agent
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount directory to avoid file permission issues
+      - .:/app
+    environment:
+      # Default to the Docker-friendly host URL for Mac
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    extra_hosts:
+      # Essential for Linux/Windows, but on Mac Docker Desktop handles host.docker.internal automatically
+      - "host.docker.internal:host-gateway"
+    command: >
+      sh -c "python initialize_system.py && streamlit run main.py"
